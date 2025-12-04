@@ -7,21 +7,20 @@
   <style>
     body {margin:0;height:100vh;background:#000;overflow:hidden;cursor:pointer;}
     canvas {position:absolute;top:0;left:0;opacity:0.13;}
-    #stats {position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#0f0;font-family:'Courier New',monospace;opacity:0;transition:opacity 1s;}
+    #stats {position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#0f0;font-family:'Courier New',monospace;opacity:0;transition:opacity 1.2s;}
     #stats.show {opacity:1;}
-    h1 {font-size:4em;margin:0 0 20px 0;}
-    .num {font-size:6em;font-weight:bold;margin:15px 0;letter-spacing:3px;}
-    small {font-size:1.1em;opacity:0.7;}
+    h1 {font-size:4.5em;margin:0 0 10px 0;}
+    .num {font-size:7em;font-weight:bold;margin:10px 0;letter-spacing:4px;text-shadow:0 0 20px #0f0;}
+    .live {color:#0f0;animation:pulse 2s infinite;}
+    @keyframes pulse {0%,100%{opacity:0.7} 50%{opacity:1}}
   </style>
 </head>
 <body>
   <canvas id="bg"></canvas>
-
   <div id="stats">
     <h1>nikegtag.live</h1>
     <div class="num" id="total">0</div>
-    <div class="num" id="today">0</div>
-    <small id="time"></small>
+    <div class="num" id="today">0 <span class="live">●</span></div>
   </div>
 
   <script>
@@ -30,10 +29,10 @@
     const ctx = c.getContext("2d");
     c.width = innerWidth; c.height = innerHeight;
     window.addEventListener("resize",()=>{c.width=innerWidth;c.height=innerHeight;});
-    const chars = "ニケタグUNBLOCKED0123456789";
+    const chars = "ニケタグ0123456789";
     const font = 16;
-    const cols = c.width/font;
-    const drops = Array(Math.floor(cols)).fill(1);
+    let cols = Math.floor(c.width/font);
+    const drops = Array(cols).fill(1);
     function draw(){
       ctx.fillStyle = "rgba(0,0,0,0.05)";
       ctx.fillRect(0,0,c.width,c.height);
@@ -50,31 +49,26 @@
 
     // 3 clicks + "." unlock
     let clicks = 0;
-    document.body.onclick = () => { clicks = (clicks + 1) % 10; };
+    document.body.onclick = () => clicks++;
     document.onkeydown = e => {
       if (clicks >= 3 && e.key === ".") {
         document.getElementById("stats").classList.add("show");
-        loadStats();
         clicks = 0;
+        startLiveCounter();
       }
     };
 
-    // Load stats
-    async function loadStats(){
-      const site = "nikegtag.github.io";
-      const total = await fetch(`https://api.countapi.xyz/get/${site}/total`).then(r=>r.json()).catch(()=> ({value:0}));
-      const today = new Date().toISOString().split("T")[0];
-      const day = await fetch(`https://api.countapi.xyz/get/${site}/${today}`).then(r=>r.json()).catch(()=> ({value:0}));
-
-      document.getElementById("total").textContent = (total.value||0).toLocaleString();
-      document.getElementById("today").textContent = (day.value||0).toLocaleString();
-      document.getElementById("time").textContent = "Updated " + new Date().toLocaleString().split(" GMT")[0];
+    // LIVE COUNTER — updates every 1 second
+    function startLiveCounter() {
+      setInterval(async () => {
+        const total = await fetch("https://api.countapi.xyz/get/nikegtag.github.io/total").then(r=>r.json()).then(d=>d.value||0);
+        const today = new Date().toISOString().split("T")[0];
+        const day = await fetch(`https://api.countapi.xyz/get/nikegtag.github.io/${today}`).then(r=>r.json()).then(d=>d.value||0);
+        
+        document.getElementById("total").textContent = total.toLocaleString();
+        document.getElementById("today").innerHTML = day.toLocaleString() + ' <span class="live">●</span>';
+      }, 1000); // every second
     }
-
-    // Auto-refresh every 15 sec after unlock
-    setInterval(() => {
-      if (document.getElementById("stats").classList.contains("show")) loadStats();
-    }, 15000);
   </script>
 </body>
 </html>
