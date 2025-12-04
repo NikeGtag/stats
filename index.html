@@ -3,88 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>nikegtag.live — Loading…</title>
+  <title>nikegtag.live</title>
   <style>
-    body {margin:0;height:100vh;background:#000;display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;color:#0f0;overflow:hidden;cursor:pointer;}
-    canvas {position:absolute;top:0;left:0;opacity:0.12;}
-    .locked h1 {font-size:3.5em;margin:0;}
-    .locked p {font-size:1.4em;opacity:0.7;}
-    .num {font-size:5em;font-weight:bold;margin:20px 0;letter-spacing:2px;}
-    .hidden {display:none;}
-    small {color:#0a0;}
+    body {margin:0;height:100vh;background:#000;overflow:hidden;cursor:pointer;}
+    canvas {position:absolute;top:0;left:0;opacity:0.13;}
+    #stats {position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#0f0;font-family:'Courier New',monospace;opacity:0;transition:opacity 1s;}
+    #stats.show {opacity:1;}
+    h1 {font-size:4em;margin:0 0 20px 0;}
+    .num {font-size:6em;font-weight:bold;margin:15px 0;letter-spacing:3px;}
+    small {font-size:1.1em;opacity:0.7;}
   </style>
 </head>
 <body>
   <canvas id="bg"></canvas>
-  <div id="content" class="locked">
+
+  <div id="stats">
     <h1>nikegtag.live</h1>
-    <p>click 3 times + press . to enter</p>
-    <div class="num" id="total">?</div>
-    <div class="num" id="today">?</div>
-    <small>Last update: <span id="time">-</span></small>
+    <div class="num" id="total">0</div>
+    <div class="num" id="today">0</div>
+    <small id="time"></small>
   </div>
 
   <script>
-    // === MATRIX RAIN BACKGROUND (same as before) ===
-    const canvas = document.getElementById("bg");
-    const ctx = canvas.getContext("2d");
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    // Matrix rain
+    const c = document.getElementById("bg");
+    const ctx = c.getContext("2d");
+    c.width = innerWidth; c.height = innerHeight;
+    window.addEventListener("resize",()=>{c.width=innerWidth;c.height=innerHeight;});
     const chars = "ニケタグUNBLOCKED0123456789";
-    const fontSize = 16;
-    const columns = canvas.width/fontSize;
-    const drops = Array(Math.floor(columns)).fill(1);
-    function draw() {
+    const font = 16;
+    const cols = c.width/font;
+    const drops = Array(Math.floor(cols)).fill(1);
+    function draw(){
       ctx.fillStyle = "rgba(0,0,0,0.05)";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillRect(0,0,c.width,c.height);
       ctx.fillStyle = "#0f0";
-      ctx.font = fontSize+"px monospace";
+      ctx.font = font+"px monospace";
       for(let i=0;i<drops.length;i++){
-        const text = chars[Math.floor(Math.random()*chars.length)];
-        ctx.fillText(text,i*fontSize,drops[i]*fontSize);
-        if(drops[i]*fontSize > canvas.height && Math.random()>0.975) drops[i]=0;
+        const char = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(char,i*font,drops[i]*font);
+        if(drops[i]*font > c.height && Math.random()>0.975) drops[i]=0;
         drops[i]++;
       }
     }
     setInterval(draw,33);
 
-    // === SECRET UNLOCK: 3 clicks + press "." ===
+    // 3 clicks + "." unlock
     let clicks = 0;
-    document.body.addEventListener("click", () => {
-      clicks++;
-      if (clicks >= 3) {
-        document.body.style.cursor = "text";
-        // Ready for the dot
-      }
-    });
-
-    document.addEventListener("keydown", e => {
+    document.body.onclick = () => { clicks = (clicks + 1) % 10; };
+    document.onkeydown = e => {
       if (clicks >= 3 && e.key === ".") {
-        document.getElementById("content").classList.remove("locked");
-        document.body.style.cursor = "default";
-        clicks = 0; // prevent re-trigger
+        document.getElementById("stats").classList.add("show");
         loadStats();
+        clicks = 0;
       }
-      // Optional: reset clicks on any wrong key after 3 clicks
-      if (clicks >= 3 && e.key !== ".") clicks = 2;
-    });
+    };
 
-    // === LOAD STATS FROM COUNTAPI ===
-    async function loadStats() {
+    // Load stats
+    async function loadStats(){
       const site = "nikegtag.github.io";
-      const totalResp = await fetch(`https://api.countapi.xyz/get/${site}/total`).then(r=>r.json());
+      const total = await fetch(`https://api.countapi.xyz/get/${site}/total`).then(r=>r.json()).catch(()=> ({value:0}));
       const today = new Date().toISOString().split("T")[0];
-      const todayResp = await fetch(`https://api.countapi.xyz/get/${site}/${today}`).then(r=>r.json());
+      const day = await fetch(`https://api.countapi.xyz/get/${site}/${today}`).then(r=>r.json()).catch(()=> ({value:0}));
 
-      document.getElementById("total").textContent = (totalResp.value||0).toLocaleString();
-      document.getElementById("today").textContent = (todayResp.value||0).toLocaleString();
-      document.getElementById("time").textContent = new Date().toLocaleString().split(' GMT')[0];
+      document.getElementById("total").textContent = (total.value||0).toLocaleString();
+      document.getElementById("today").textContent = (day.value||0).toLocaleString();
+      document.getElementById("time").textContent = "Updated " + new Date().toLocaleString().split(" GMT")[0];
     }
 
-    // Auto-refresh every 18 seconds once unlocked
+    // Auto-refresh every 15 sec after unlock
     setInterval(() => {
-      if (!document.querySelector(".locked")) loadStats();
-    }, 18000);
+      if (document.getElementById("stats").classList.contains("show")) loadStats();
+    }, 15000);
   </script>
 </body>
 </html>
