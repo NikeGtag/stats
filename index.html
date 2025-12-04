@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>nikegtag.live — Loading…</title>
+  <style>
+    body { 
+      margin:0; height:100vh; background:#000; 
+      display:flex; align-items:center; justify-content:center;
+      font-family: 'Courier New', monospace; color:#0f0;
+    }
+    .locked { text-align:center; }
+    .num { font-size:4em; font-weight:bold; margin:20px 0; }
+    .hidden { display:none; }
+    canvas { position:absolute; top:0; left:0; opacity:0.1; }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div id="content" class="locked">
+    <h1>nikegtag.live</h1>
+    <p>Real-time visitor stats</p>
+    <div class="num" id="total">?</div>
+    <div class="num" id="today">?</div>
+    <small>Last updated: <span id="time">-</span></small>
+  </div>
+
+  <!-- The password is triggered by typing "homework" anywhere on the page -->
+  <script>
+    // Obfuscated password (no plain text in source)
+    const secret = atob("aG9tZXdvcms=").split("").reverse().join(""); // "homework"
+    let input = "";
+
+    // Background matrix rain (hides everything + looks cool)
+    const canvas = document.getElementById("bg");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const chars = "ニケタグ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+    function draw() {
+      ctx.fillStyle = "rgba(0,0,0,0.05)";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#0f0";
+      ctx.font = fontSize + "px monospace";
+      for(let i=0;i<drops.length;i++){
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+        if(drops[i]*fontSize > canvas.height && Math.random()>0.975) drops[i]=0;
+        drops[i]++;
+      }
+    }
+    setInterval(draw, 33);
+
+    // Secret password listener (invisible, no input field)
+    document.addEventListener("keydown", e => {
+      input += e.key.toLowerCase();
+      if(input.includes(secret)){
+        document.getElementById("content").classList.remove("locked");
+        input = ""; // prevent re-trigger
+        loadStats();
+      }
+      if(input.length > 20) input = input.slice(-10); // limit memory
+    });
+
+    // Load real stats from CountAPI
+    async function loadStats() {
+      const site = "nikegtag.github.io";
+      const total = await fetch(`https://api.countapi.xyz/get/${site}/total`).then(r=>r.json()).then(d=>d.value||0);
+      const today = new Date().toISOString().split("T")[0];
+      const day = await fetch(`https://api.countapi.xyz/get/${site}/${today}`).then(r=>r.json()).then(d=>d.value||0);
+      
+      document.getElementById("total").textContent = total.toLocaleString();
+      document.getElementById("today").textContent = day.toLocaleString();
+      document.getElementById("time").textContent = new Date().toLocaleString();
+    }
+
+    // Auto-refresh every 20 seconds after unlock
+    setInterval(() => {
+      if(!document.getElementById("content").classList.contains("locked")) loadStats();
+    }, 20000);
+  </script>
+</body>
+</html>
